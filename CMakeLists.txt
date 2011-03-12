@@ -18,7 +18,9 @@ SET( ${PROJECT_NAME}_PATCH_LEVEL 1 )
 
 OPTION( BUILD_TESTS "Set to ON to build test programs" OFF )
 
-ADD_DEFINITIONS( "-Wall" )
+ADD_DEFINITIONS( "-Wall" ) 
+
+SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -maes -msse4" )     
 
 ADD_SUBDIRECTORY( src )
 
