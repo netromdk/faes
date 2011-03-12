@@ -260,9 +260,9 @@ namespace FAES {
     void cpuid(unsigned int opcode, unsigned int result[4]);
 
     /**
-     * Determines whether SSE is supported.
+     * Determines whether SSE 4.1 is supported.
      */
-    bool sseSupported();    
+    bool sse41Supported();    
 
     /**
      * Determines whether the AES instruction set is supported.

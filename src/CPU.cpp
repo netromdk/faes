@@ -35,12 +35,12 @@ void CPU::cpuid(unsigned int opcode, unsigned int result[4]) {
            : "cc");
 }
 
-bool CPU::sseSupported() {
-  CPUFeatures_t features;
+bool CPU::sse41Supported() {
+  CPUFeatures2_t features;
   unsigned int res[4];
   cpuid(1, res);
-  features.raw_data = res[4];
-  return features.features.SSE == 1;  
+  features.raw_data = res[3];
+  return features.features.SSE4_1 == 1;  
 }
 
 bool CPU::aesSupported() {

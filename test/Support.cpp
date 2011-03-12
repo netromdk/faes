@@ -11,8 +11,8 @@ int main(int argc, char **argv) {
   }
 
   cout << "CPUID instruction supported." << endl
-       << "SSE supported: " << boolalpha
-       << sseSupported() << endl
+       << "SSE 4.1 supported: " << boolalpha
+       << sse41Supported() << endl
        << "AES instruction set supported: " << boolalpha
        << aesSupported() << endl;  
   return 0;
