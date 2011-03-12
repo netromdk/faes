@@ -2,16 +2,18 @@
 using namespace std;
 
 #include "CPU.h"
-using namespace FAES;
+using namespace FAES::CPU;
 
 int main(int argc, char **argv) {
-  if (!CPU::cpuidSupported()) {
+  if (!cpuidSupported()) {
     cout << "CPUID instruction not supported." << endl;
     return 0;
   }
 
   cout << "CPUID instruction supported." << endl
+       << "SSE supported: " << boolalpha
+       << sseSupported() << endl
        << "AES instruction set supported: " << boolalpha
-       << CPU::aesSupported() << endl;  
+       << aesSupported() << endl;  
   return 0;
 }
