@@ -1,0 +1,10 @@
+### Libs ###
+
+SET( CORELIBS faes )
+LINK_DIRECTORIES( ${PROJECT_BINARY_DIR} )
+INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/src )
+
+### Build and link ####
+
+ADD_EXECUTABLE( Support Support.cpp ) 
+TARGET_LINK_LIBRARIES( Support ${CORELIBS} )
