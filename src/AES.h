@@ -3,9 +3,14 @@
 
 #include <string>
 #include <sstream>
+#include <emmintrin.h>
 
 namespace FAES {
   namespace AES {
+    // Round Constants
+    const int RCON[10] = {0x1,  0x2,  0x4,  0x8,  0x10,
+                          0x20, 0x40, 0x80, 0x1B, 0x36};
+    
     enum Mode {
       // Counter-Block Chaining.
       CBC,
@@ -62,8 +67,10 @@ namespace FAES {
       void genKeySchedule(const Key &key,
                           unsigned char **schedule);
 
+      __m128i assistKey128(__m128i tmp, __m128i tmp2);
       void expandKey128(const unsigned char *key,
                         unsigned char *schedule);
+      
       void expandKey192(const unsigned char *key,
                         unsigned char *schedule);
       void expandKey256(const unsigned char *key,

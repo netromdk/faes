@@ -1,8 +1,9 @@
 #include <cstring>
+#include <wmmintrin.h>
 using namespace std;
 
 #include "AES.h"
-#include <wmmintrin.h>
+#include "Common.h"
 
 namespace FAES {
   namespace AES {
@@ -118,6 +119,26 @@ namespace FAES {
       }      
     }
 
+    inline __m128i Cryptor::assistKey128(__m128i tmp, __m128i tmp2) {
+      // Shift 4 bytes to the left (zero-padding) and xor tmp with it.
+      __m128i tmp3 = _mm_slli_si128(tmp, 0x4);
+      tmp = _mm_xor_si128(tmp, tmp3);
+      
+      tmp3 = _mm_slli_si128(tmp3, 0x4);
+      tmp = _mm_xor_si128(tmp, tmp3);
+      
+      tmp3 = _mm_slli_si128(tmp3, 0x4);
+      tmp = _mm_xor_si128(tmp, tmp3);
+
+      // Duplicate the 4th 32-bit part 4 times:
+      // [1, 2, 3, 4] -> [4, 4, 4, 4]
+      tmp2 = _mm_shuffle_epi32(tmp2, SHUFFLE4_32(3, 3, 3, 3));
+
+      // Then xor tmp with tmp2.
+      tmp = _mm_xor_si128(tmp, tmp2);
+      return tmp;     
+    }
+
     void Cryptor::expandKey128(const unsigned char *key,
                                unsigned char *schedule) {
       __m128i *keySchedule = (__m128i*) schedule;
@@ -126,7 +147,47 @@ namespace FAES {
       __m128i tmp = _mm_loadu_si128((__m128i*) key);
       keySchedule[0] = tmp;
 
-      
+      // The assist pretty much does the following:
+      //   SubWord(RotWord(tmp)) xor RCON[i/Nk]
+      __m128i tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[0]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[1] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[1]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[2] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[2]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[3] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[3]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[4] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[4]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[5] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[5]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[6] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[6]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[7] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[7]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[8] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[8]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[9] = tmp;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[9]);
+      tmp = assistKey128(tmp, tmp2);
+      keySchedule[10] = tmp;            
     }
     
     void Cryptor::expandKey192(const unsigned char *key,
