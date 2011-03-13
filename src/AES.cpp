@@ -1,8 +1,8 @@
 #include <cstring>
 using namespace std;
 
-#include "intel/wmmintrin.h"
 #include "AES.h"
+#include <wmmintrin.h>
 
 namespace FAES {
   namespace AES {
@@ -120,6 +120,12 @@ namespace FAES {
 
     void Cryptor::expandKey128(const unsigned char *key,
                                unsigned char *schedule) {
+      __m128i *keySchedule = (__m128i*) schedule;
+
+      // The first entry is just the key itself.
+      __m128i tmp = _mm_loadu_si128((__m128i*) key);
+      keySchedule[0] = tmp;
+
       
     }
     
