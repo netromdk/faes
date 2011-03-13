@@ -1,7 +1,8 @@
 SET( NAME faes )
 
 SET( SOURCES
-     CPU.cpp )
+     CPU.cpp 
+     AES.cpp )
 
 ### Build and link ####
 
