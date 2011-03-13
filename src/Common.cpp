@@ -23,4 +23,14 @@ namespace FAES {
 
     cout << endl;  
   }
+
+  void print_m128i_as_byte_int(__m128i data) {
+    unsigned char *ptr = (unsigned char*) &data;
+  
+    for (int i = 0; i < 16; i++) {
+      cout << (int) ptr[i] << " ";
+    }
+
+    cout << endl;  
+  }  
 }

@@ -9,6 +9,7 @@
 namespace FAES {
   void print_m128i_as_int(__m128i data);
   void print_m128i_as_byte(__m128i data);
+  void print_m128i_as_byte_int(__m128i data);  
 }
 
 #endif // COMMON_H

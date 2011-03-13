@@ -147,45 +147,49 @@ namespace FAES {
       __m128i tmp = _mm_loadu_si128((__m128i*) key);
       keySchedule[0] = tmp;
 
+      // Sadly, these cannot be done in a loop because the second
+      // argument of _mm_aeskeygenassist_si128() needs to be a 8-bit
+      // immediate!
+
       // The assist pretty much does the following:
-      //   SubWord(RotWord(tmp)) xor RCON[i/Nk]
-      __m128i tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[0]);
+      //   SubWord(RotWord(tmp)) xor RCON[round]
+      __m128i tmp2 = _mm_aeskeygenassist_si128(tmp, 0x1);      
       tmp = assistKey128(tmp, tmp2);
       keySchedule[1] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[1]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x2);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[2] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[2]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x4);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[3] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[3]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x8);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[4] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[4]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x10);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[5] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[5]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x20);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[6] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[6]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x40);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[7] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[7]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x80);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[8] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[8]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x1B);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[9] = tmp;
 
-      tmp2 = _mm_aeskeygenassist_si128(tmp, RCON[9]);
+      tmp2 = _mm_aeskeygenassist_si128(tmp, 0x36);
       tmp = assistKey128(tmp, tmp2);
       keySchedule[10] = tmp;            
     }
