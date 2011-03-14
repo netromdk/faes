@@ -1,4 +1,5 @@
 #include <cstring>
+#include <iostream> // remove
 #include <wmmintrin.h>
 using namespace std;
 
@@ -82,7 +83,7 @@ namespace FAES {
     void Cryptor::decrypt(const string &ciphertext, const Key &key,
                           string *plaintext) {
       unsigned char *schedule;
-      genKeySchedule(key, &schedule);
+      genKeySchedule(key, &schedule, false);
       
       switch (mode) {
       case ECB:
@@ -99,24 +100,59 @@ namespace FAES {
       delete[] schedule;
     }
 
+    inline int Cryptor::getRounds(const KeySize &size) {
+      switch (size) {
+      default:
+      case _128_BITS:
+        return 10;
+
+      case _192_BITS:
+        return 12;
+
+      case _256_BITS:
+        return 14;
+      }
+    }
+
     void Cryptor::genKeySchedule(const Key &key,
-                                 unsigned char **schedule) {
+                                 unsigned char **schedule,
+                                 bool encryption) {
+      int upper;
+      
       switch (key.size) {
       case _128_BITS:
-        *schedule = new unsigned char[11 * 16];
+        upper = 9;
+        *schedule = new unsigned char[11 * sizeof(__m128i)];
         expandKey128(key.key, schedule[0]);
         break;
 
       case _192_BITS:
-        *schedule = new unsigned char[14 * 16];
+        upper = 11;
+        *schedule = new unsigned char[14 * sizeof(__m128i)];
         expandKey192(key.key, schedule[0]);        
         break;
 
       case _256_BITS:
-        *schedule = new unsigned char[15 * 16];
+        upper = 13;
+        *schedule = new unsigned char[15 * sizeof(__m128i)];
         expandKey256(key.key, schedule[0]);        
         break;         
-      }      
+      }
+
+      // Generate decryption round keys by using aesimc
+      // instruction. This only concerns keys 1-9/11/13.
+      if (!encryption) {
+        __m128i *keySchedule = (__m128i*) schedule[0];
+        
+        for (int i = 1; i <= upper; i++) {
+          /*cout << "round key " << i << endl;
+            print_m128i_as_byte_int(keySchedule[i]);*/
+          keySchedule[i] = _mm_aesimc_si128(keySchedule[i]);
+          /*cout << "aesimc" << endl;
+          print_m128i_as_byte_int(keySchedule[i]);
+          cout << endl;*/
+        }
+      }
     }
 
     inline __m128i Cryptor::assistKey128(__m128i tmp, __m128i tmp2) {
@@ -207,13 +243,77 @@ namespace FAES {
     void Cryptor::ecbEncrypt(const string &plaintext, const Key &key,
                              string *ciphertext,
                              unsigned char *schedule) {
+      // Right now we just use the same length, but it should just be
+      // a multiple of 16.
+      ciphertext->resize(plaintext.size());
+
+      int blocks = plaintext.size() / 16;
+      if (plaintext.size() % 16) {
+        blocks++;
+      }
+
+      __m128i tmp;
+      __m128i *input = (__m128i*) plaintext.data();
+      __m128i *output = (__m128i*) ciphertext->data();      
+      __m128i *keySchedule = (__m128i*) schedule;
+      int rounds = getRounds(key.size);
       
+      for (int block = 0; block < blocks; block++) {
+        // Get next 128-bit block.
+        tmp = _mm_loadu_si128(&input[block]);
+
+        // Whitening step.
+        tmp = _mm_xor_si128(tmp, keySchedule[0]);
+
+        // Apply the AES rounds.
+        int round = 1;
+        for (; round < rounds; round++) {
+          tmp = _mm_aesenc_si128(tmp, keySchedule[round]);
+        }
+
+        // And the last.
+        tmp = _mm_aesenclast_si128(tmp, keySchedule[round]);
+
+        // Save the encrypted block.
+        _mm_storeu_si128(&output[block], tmp);
+      }
     }
     
     void Cryptor::ecbDecrypt(const string &ciphertext, const Key &key,
                              string *plaintext,
                              unsigned char *schedule) {
+      plaintext->resize(ciphertext.size());
+
+      int blocks = ciphertext.size() / 16;
+      if (ciphertext.size() % 16) {
+        blocks++;
+      }
+
+      __m128i tmp;
+      __m128i *input = (__m128i*) ciphertext.data();
+      __m128i *output = (__m128i*) plaintext->data();      
+      __m128i *keySchedule = (__m128i*) schedule;
+      int rounds = getRounds(key.size);
       
+      for (int block = 0; block < blocks; block++) {
+        // Get next 128-bit block.
+        tmp = _mm_loadu_si128(&input[block]);
+
+        // Whitening step.
+        tmp = _mm_xor_si128(tmp, keySchedule[0]);
+
+        // Apply the AES rounds.
+        int round = 1;
+        for (; round < rounds; round++) {
+          tmp = _mm_aesdec_si128(tmp, keySchedule[round]);
+        }
+
+        // And the last.
+        tmp = _mm_aesdeclast_si128(tmp, keySchedule[round]);
+
+        // Save the decrypted block.
+        _mm_storeu_si128(&output[block], tmp);
+      }      
     }
   }
 }

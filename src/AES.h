@@ -60,8 +60,11 @@ namespace FAES {
                    std::string *plaintext);    
 
     private:
-      void genKeySchedule(const Key &key,
-                          unsigned char **schedule);
+      static int getRounds(const KeySize &size);
+      
+      void genKeySchedule(const Key &key, unsigned char **schedule,
+                          bool encryption = true);
+
 
       __m128i assistKey128(__m128i tmp, __m128i tmp2);
       void expandKey128(const unsigned char *key,
