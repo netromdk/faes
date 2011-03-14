@@ -83,6 +83,7 @@ namespace FAES {
                       unsigned char *schedule);      
     
       Mode mode;
+      bool bigEndian;
     };
   }
 }

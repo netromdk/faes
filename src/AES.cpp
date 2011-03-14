@@ -34,7 +34,10 @@ namespace FAES {
       return os;
     }  
     
-    Cryptor::Cryptor(Mode mode) : mode(mode) { }
+    Cryptor::Cryptor(Mode mode) : mode(mode) {
+      // Determine endianness.
+      bigEndian = isBigEndian();
+    }
 
     Cryptor::~Cryptor() { }
 
@@ -145,12 +148,7 @@ namespace FAES {
         __m128i *keySchedule = (__m128i*) schedule[0];
         
         for (int i = 1; i <= upper; i++) {
-          /*cout << "round key " << i << endl;
-            print_m128i_as_byte_int(keySchedule[i]);*/
           keySchedule[i] = _mm_aesimc_si128(keySchedule[i]);
-          /*cout << "aesimc" << endl;
-          print_m128i_as_byte_int(keySchedule[i]);
-          cout << endl;*/
         }
       }
     }
@@ -181,6 +179,9 @@ namespace FAES {
 
       // The first entry is just the key itself.
       __m128i tmp = _mm_loadu_si128((__m128i*) key);
+      if (!bigEndian) {
+        reverse_m128i(tmp); // swap byte-order => big-endian.
+      }
       keySchedule[0] = tmp;
 
       // Sadly, these cannot be done in a loop because the second
@@ -262,6 +263,11 @@ namespace FAES {
         // Get next 128-bit block.
         tmp = _mm_loadu_si128(&input[block]);
 
+        // Swap byte-order => big-endian.
+        if (!bigEndian) {        
+          reverse_m128i(tmp); 
+        }
+
         // Whitening step.
         tmp = _mm_xor_si128(tmp, keySchedule[0]);
 
@@ -274,6 +280,11 @@ namespace FAES {
         // And the last.
         tmp = _mm_aesenclast_si128(tmp, keySchedule[round]);
 
+        // Swap byte-order => little-endian.        
+        if (!bigEndian) {        
+          reverse_m128i(tmp); 
+        }
+        
         // Save the encrypted block.
         _mm_storeu_si128(&output[block], tmp);
       }
@@ -299,6 +310,11 @@ namespace FAES {
         // Get next 128-bit block.
         tmp = _mm_loadu_si128(&input[block]);
 
+        // Swap byte-order => big-endian.
+        if (!bigEndian) {                
+          reverse_m128i(tmp); 
+        }
+
         // Whitening step.
         tmp = _mm_xor_si128(tmp, keySchedule[0]);
 
@@ -311,6 +327,11 @@ namespace FAES {
         // And the last.
         tmp = _mm_aesdeclast_si128(tmp, keySchedule[round]);
 
+        // Swap byte-order => little-endian.
+        if (!bigEndian) {                        
+          reverse_m128i(tmp);
+        }
+        
         // Save the decrypted block.
         _mm_storeu_si128(&output[block], tmp);
       }      
