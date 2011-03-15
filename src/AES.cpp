@@ -1,5 +1,4 @@
 #include <cstring>
-#include <iostream> // remove
 #include <wmmintrin.h>
 using namespace std;
 
@@ -10,7 +9,7 @@ namespace FAES {
   namespace AES {
     string Key::toString() const {
       stringstream ss;
-      ss << "Key { size:  " << size << endl
+      ss << "Key { size:  " << (size * 8) << " bits" << endl
          << "      key:   ";
 
       for (int i = 0; i < size; i++) {
@@ -65,7 +64,7 @@ namespace FAES {
 
     void Cryptor::encrypt(const string &plaintext, const Key &key,
                           string *ciphertext) {
-      unsigned char *schedule;
+      ALIGN16 unsigned char *schedule;
       genKeySchedule(key, &schedule);
       
       switch (mode) {
@@ -85,7 +84,7 @@ namespace FAES {
 
     void Cryptor::decrypt(const string &ciphertext, const Key &key,
                           string *plaintext) {
-      unsigned char *schedule;
+      ALIGN16 unsigned char *schedule;
       genKeySchedule(key, &schedule, false);
       
       switch (mode) {
@@ -143,13 +142,27 @@ namespace FAES {
       }
 
       // Generate decryption round keys by using aesimc
-      // instruction. This only concerns keys 1-9/11/13.
+      // instruction. This only concerns keys 1-9/11/13. And reverse
+      // the order for all of them!
       if (!encryption) {
         __m128i *keySchedule = (__m128i*) schedule[0];
+
+        unsigned char *tempSchedule =
+          new unsigned char[15 * sizeof(__m128i)];
+        __m128i *tempKeySchedule = (__m128i*) tempSchedule;
+
+        tempKeySchedule[upper + 1] = keySchedule[0];
         
         for (int i = 1; i <= upper; i++) {
-          keySchedule[i] = _mm_aesimc_si128(keySchedule[i]);
+          tempKeySchedule[(upper + 1) - i] =
+            _mm_aesimc_si128(keySchedule[i]);
         }
+
+        tempKeySchedule[0] = keySchedule[upper + 1];
+
+        // Now use the temp. instead!
+        delete[] schedule[0];
+        schedule[0] = (unsigned char*) tempKeySchedule;
       }
     }
 

@@ -4,6 +4,16 @@ using namespace std;
 #include "Common.h"
 
 namespace FAES {
+  void dumpString(string &data) {
+    cout << "[" << data.size() << "] ";
+  
+    for (int i = 0; i < data.size(); i++) {
+      cout << (int) data[i] << " ";
+    }
+  
+    cout << endl;
+  }
+  
   void print_m128i_as_int(__m128i &data) {
     int *ptr = (int*) &data;
   
