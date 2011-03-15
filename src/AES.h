@@ -69,9 +69,12 @@ namespace FAES {
       __m128i assistKey128(__m128i tmp, __m128i tmp2);
       void expandKey128(const unsigned char *key,
                         unsigned char *schedule);
-      
+
+      void assistKey192(__m128i *tmp, __m128i *tmp2,
+                           __m128i *tmp3);
       void expandKey192(const unsigned char *key,
                         unsigned char *schedule);
+      
       void expandKey256(const unsigned char *key,
                         unsigned char *schedule);            
 
