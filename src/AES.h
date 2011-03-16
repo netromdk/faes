@@ -5,6 +5,8 @@
 #include <sstream>
 #include <emmintrin.h>
 
+#include "Common.h"
+
 namespace FAES {
   namespace AES {
     enum Mode {
@@ -39,7 +41,7 @@ namespace FAES {
       std::string toString() const;
 
       // iv and nonce should be terminated with a \0.
-      unsigned char *key, *iv, *nonce;
+      ALIGN16 unsigned char *key, *iv, *nonce;
       KeySize size;
     };
 
@@ -62,9 +64,8 @@ namespace FAES {
     private:
       static int getRounds(const KeySize &size);
       
-      void genKeySchedule(const Key &key, unsigned char **schedule,
-                          bool encryption = true);
-
+      unsigned char *genKeySchedule(const Key &key,
+                                    bool encryption = true);
 
       __m128i assistKey128(__m128i tmp, __m128i tmp2);
       void expandKey128(const unsigned char *key,
@@ -74,7 +75,9 @@ namespace FAES {
                            __m128i *tmp3);
       void expandKey192(const unsigned char *key,
                         unsigned char *schedule);
-      
+
+      void assistKey256_1(__m128i *tmp, __m128i *tmp2); 
+      void assistKey256_2(__m128i *tmp, __m128i *tmp2); 
       void expandKey256(const unsigned char *key,
                         unsigned char *schedule);            
 

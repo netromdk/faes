@@ -3,7 +3,6 @@
 using namespace std;
 
 #include "AES.h"
-#include "Common.h"
 
 namespace FAES {
   namespace AES {
@@ -64,8 +63,7 @@ namespace FAES {
 
     void Cryptor::encrypt(const string &plaintext, const Key &key,
                           string *ciphertext) {
-      ALIGN16 unsigned char *schedule;
-      genKeySchedule(key, &schedule);
+      ALIGN16 unsigned char *schedule = genKeySchedule(key);
       
       switch (mode) {
       case ECB:
@@ -84,8 +82,8 @@ namespace FAES {
 
     void Cryptor::decrypt(const string &ciphertext, const Key &key,
                           string *plaintext) {
-      ALIGN16 unsigned char *schedule;
-      genKeySchedule(key, &schedule, false);
+      
+      ALIGN16 unsigned char *schedule = genKeySchedule(key, false);
       
       switch (mode) {
       case ECB:
@@ -116,28 +114,25 @@ namespace FAES {
       }
     }
 
-    void Cryptor::genKeySchedule(const Key &key,
-                                 unsigned char **schedule,
-                                 bool encryption) {
+    unsigned char *Cryptor::genKeySchedule(const Key &key,
+                                                   bool encryption) {
+      ALIGN16 unsigned char *schedule = new unsigned char[15 * 16];
       int upper;
       
       switch (key.size) {
       case _128_BITS:
         upper = 9;
-        *schedule = new unsigned char[11 * sizeof(__m128i)];
-        expandKey128(key.key, schedule[0]);
+        expandKey128(key.key, schedule);
         break;
 
       case _192_BITS:
         upper = 11;
-        *schedule = new unsigned char[14 * sizeof(__m128i)];
-        expandKey192(key.key, schedule[0]);        
+        expandKey192(key.key, schedule);        
         break;
 
       case _256_BITS:
         upper = 13;
-        *schedule = new unsigned char[15 * sizeof(__m128i)];
-        expandKey256(key.key, schedule[0]);        
+        expandKey256(key.key, schedule);        
         break;         
       }
 
@@ -145,10 +140,10 @@ namespace FAES {
       // instruction. This only concerns keys 1-9/11/13. And reverse
       // the order for all of them!
       if (!encryption) {
-        __m128i *keySchedule = (__m128i*) schedule[0];
+        __m128i *keySchedule = (__m128i*) schedule;
 
-        unsigned char *tempSchedule =
-          new unsigned char[15 * sizeof(__m128i)];
+        ALIGN16 unsigned char *tempSchedule =
+          new unsigned char[15 * 16];
         __m128i *tempKeySchedule = (__m128i*) tempSchedule;
 
         tempKeySchedule[upper + 1] = keySchedule[0];
@@ -161,9 +156,11 @@ namespace FAES {
         tempKeySchedule[0] = keySchedule[upper + 1];
 
         // Now use the temp. instead!
-        delete[] schedule[0];
-        schedule[0] = (unsigned char*) tempKeySchedule;
+        delete[] schedule;
+        return (unsigned char*) tempKeySchedule;
       }
+
+      return schedule;
     }
 
     inline __m128i Cryptor::assistKey128(__m128i tmp, __m128i tmp2) {
@@ -246,8 +243,8 @@ namespace FAES {
 
     inline void Cryptor::assistKey192(__m128i *tmp, __m128i *tmp2,
                                       __m128i *tmp3) {
-      // Duplicate the 1st 32-bit part 4 times:
-      // [1, 2, 3, 4] -> [1, 1, 1, 1]      
+      // Duplicate the 2nd 32-bit part 4 times:
+      // [1, 2, 3, 4] -> [2, 2, 2, 2]      
       __m128i tmp4;
       *tmp2 = _mm_shuffle_epi32(*tmp2, SHUFFLE4_32(1, 1, 1, 1));
       
@@ -346,9 +343,98 @@ namespace FAES {
       keySchedule[13] = tmp3;      
     }
 
+    void Cryptor::assistKey256_1(__m128i *tmp, __m128i *tmp2) {
+      // Duplicate 4th part 4 times.
+      *tmp2 = _mm_shuffle_epi32(*tmp2, SHUFFLE4_32(3, 3, 3, 3));
+      
+      __m128i tmp3 = _mm_slli_si128(*tmp, 0x4);
+      *tmp = _mm_xor_si128(*tmp, tmp3);
+      
+      tmp3 = _mm_slli_si128(tmp3, 0x4);
+      *tmp = _mm_xor_si128(*tmp, tmp3);
+      
+      tmp3 = _mm_slli_si128(tmp3, 0x4);
+      *tmp = _mm_xor_si128(*tmp, tmp3);
+      *tmp = _mm_xor_si128(*tmp, *tmp2);
+    }
+    
+    void Cryptor::assistKey256_2(__m128i *tmp, __m128i *tmp2) {
+      __m128i tmp4 = _mm_aeskeygenassist_si128(*tmp, 0x0);
+
+      // Duplicate 3rd part 4 times.
+      __m128i tmp3 = _mm_shuffle_epi32(tmp4, SHUFFLE4_32(2, 2, 2, 2));
+      
+      tmp4 = _mm_slli_si128(*tmp2, 0x4);
+      
+      *tmp2 = _mm_xor_si128(*tmp2, tmp4);
+      tmp4 = _mm_slli_si128(tmp4, 0x4);
+      
+      *tmp2 = _mm_xor_si128(*tmp2, tmp4);
+      tmp4 = _mm_slli_si128(tmp4, 0x4);
+      
+      *tmp2 = _mm_xor_si128(*tmp2, tmp4);
+      *tmp2 = _mm_xor_si128(*tmp2, tmp3);
+    }    
+
     void Cryptor::expandKey256(const unsigned char *key,
                                unsigned char *schedule) {
+      __m128i *keySchedule = (__m128i*) schedule;
+
+      // Save the first 128 bits of the key as the first one.
+      __m128i tmp = _mm_loadu_si128((__m128i*) key);
+      if (!bigEndian) {
+        reverse_m128i(tmp); // swap byte-order => big-endian.
+      }
+      keySchedule[0] = tmp;
+
+      // The next 128 bits as the second.
+      __m128i tmp3 = _mm_loadu_si128((__m128i*) (key + 16));
+      if (!bigEndian) {
+        reverse_m128i(tmp3); // swap byte-order => big-endian.
+      }
+      keySchedule[1] = tmp3;      
+
+      __m128i tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x01);
+
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[2] = tmp;
+
+      assistKey256_2(&tmp, &tmp3);
+      keySchedule[3] = tmp3;
+
+      tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x02);
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[4] = tmp;
+      assistKey256_2(&tmp, &tmp3);
+      keySchedule[5] = tmp3;
       
+      tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x04);
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[6] = tmp;
+      assistKey256_2(&tmp, &tmp3);
+      keySchedule[7] = tmp3;
+      
+      tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x08);
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[8] = tmp;
+      assistKey256_2(&tmp, &tmp3);
+      keySchedule[9] = tmp3;
+      
+      tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x10);
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[10] = tmp;
+      assistKey256_2(&tmp, &tmp3);
+      keySchedule[11] = tmp3;
+      
+      tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x20);
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[12] = tmp;
+      assistKey256_2(&tmp, &tmp3);
+      keySchedule[13] = tmp3;
+      
+      tmp2 = _mm_aeskeygenassist_si128(tmp3, 0x40);
+      assistKey256_1(&tmp, &tmp2);
+      keySchedule[14] = tmp;
     }
 
     void Cryptor::ecbEncrypt(const string &plaintext, const Key &key,
