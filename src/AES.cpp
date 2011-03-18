@@ -6,32 +6,6 @@ using namespace std;
 
 namespace FAES {
   namespace AES {
-    string Key::toString() const {
-      stringstream ss;
-      ss << "Key { size:  " << (size * 8) << " bits" << endl
-         << "      key:   ";
-
-      for (int i = 0; i < size; i++) {
-        ss << key[i];
-      }
-
-      if (iv) {
-        ss << endl << "      iv:    " << iv;
-      }
-
-      if (nonce) {
-        ss << endl << "      nonce: " << nonce;
-      }      
-      
-      ss << " }";
-      return ss.str();
-    }
-    
-    ostream &operator<<(ostream &os, const Key &key) {
-      os << key.toString();
-      return os;
-    }  
-    
     Cryptor::Cryptor(Mode mode) : mode(mode) {
       // Determine endianness.
       bigEndian = isBigEndian();

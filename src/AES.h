@@ -6,6 +6,8 @@
 #include <emmintrin.h>
 
 #include "Common.h"
+#include "Key.h"
+#include "KeySize.h"
 
 namespace FAES {
   namespace AES {
@@ -19,33 +21,6 @@ namespace FAES {
       // Electronic CodeBook.
       ECB
     };
-
-    enum KeySize {
-      _128_BITS = 16, // bytes
-      _192_BITS = 24,
-      _256_BITS = 32
-    };
-
-    class Key {
-    public:
-      Key(KeySize size) : iv(NULL), nonce(NULL), size(size) {
-        key = new unsigned char[size];
-      }
-
-      ~Key() {
-        delete[] key;
-        delete[] iv;
-        delete[] nonce;
-      }
-
-      std::string toString() const;
-
-      // iv and nonce should be terminated with a \0.
-      ALIGN16 unsigned char *key, *iv, *nonce;
-      KeySize size;
-    };
-
-    std::ostream &operator<<(std::ostream &os, const Key &key);
 
     class Cryptor {
     public:
