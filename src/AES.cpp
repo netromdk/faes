@@ -1,5 +1,4 @@
 #include <cstring>
-#include <iostream> //remove
 #include <wmmintrin.h>
 using namespace std;
 
@@ -520,7 +519,7 @@ namespace FAES {
         blocks++;
       }
 
-      __m128i tmp, tmp2;
+      __m128i tmp, tmp2, tmp3;
       __m128i *input = (__m128i*) plaintext.data();
       __m128i *output = (__m128i*) ciphertext->data();      
       __m128i *keySchedule = (__m128i*) schedule;
@@ -558,13 +557,14 @@ namespace FAES {
         // And the last.
         tmp2 = _mm_aesenclast_si128(tmp2, keySchedule[round]);
 
-        // Swap byte-order => little-endian.        
+        // Swap byte-order => little-endian.
+        tmp3 = tmp2;
         if (!bigEndian) {        
-          reverse_m128i(tmp2); 
+          reverse_m128i(tmp3); 
         }
         
         // Save the encrypted block.
-        _mm_storeu_si128(&output[block], tmp2);
+        _mm_storeu_si128(&output[block], tmp3);
       }
     }
     
