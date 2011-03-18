@@ -1,4 +1,5 @@
 #include <cstring>
+#include <iostream> //remove
 #include <wmmintrin.h>
 using namespace std;
 
@@ -15,20 +16,20 @@ namespace FAES {
 
     Key Cryptor::genKey(KeySize size) {
       Key key(size);
-      memset(key.key, 81, size);
+      memset(key.key, 'X', size);
 
       if (mode == CBC) {
         key.iv = new unsigned char[17];
-        memset(key.iv, 82, 16);
+        memset(key.iv, 'Y', 16);
         key.iv[16] = '\0';
       }
       else if (mode == CTR) {
         key.iv = new unsigned char[13];
-        memset(key.iv, 82, 12);
+        memset(key.iv, 'Y', 12);
         key.iv[12] = '\0';      
       
         key.nonce = new unsigned char[5];
-        memset(key.nonce, 83, 4);
+        memset(key.nonce, 'Z', 4);
         key.nonce[4] = '\0';
       }
     
@@ -45,6 +46,7 @@ namespace FAES {
         break;
 
       case CBC:
+        cbcEncrypt(plaintext, key, ciphertext, schedule);        
         break;
 
       case CTR:
@@ -65,6 +67,7 @@ namespace FAES {
         break;
 
       case CBC:
+        cbcDecrypt(ciphertext, key, plaintext, schedule);                
         break;
 
       case CTR:
@@ -505,6 +508,125 @@ namespace FAES {
         // Save the decrypted block.
         _mm_storeu_si128(&output[block], tmp);
       }      
+    }
+
+    void Cryptor::cbcEncrypt(const string &plaintext, const Key &key,
+                             string *ciphertext,
+                             unsigned char *schedule) {
+      ciphertext->resize(plaintext.size());
+
+      int blocks = plaintext.size() / 16;
+      if (plaintext.size() % 16) {
+        blocks++;
+      }
+
+      __m128i tmp, tmp2;
+      __m128i *input = (__m128i*) plaintext.data();
+      __m128i *output = (__m128i*) ciphertext->data();      
+      __m128i *keySchedule = (__m128i*) schedule;
+      int rounds = getRounds(key.size);
+
+      // Load the IV.
+      tmp2 = _mm_loadu_si128((__m128i*) key.iv);
+
+      // Swap byte-order => big-endian.
+      if (!bigEndian) {        
+        reverse_m128i(tmp2); 
+      }      
+      
+      for (int block = 0; block < blocks; block++) {
+        // Get next 128-bit block.
+        tmp = _mm_loadu_si128(&input[block]);
+
+        // Swap byte-order => big-endian.
+        if (!bigEndian) {        
+          reverse_m128i(tmp); 
+        }
+
+        // XOR IV or last ciphertext with the plaintext.
+        tmp2 = _mm_xor_si128(tmp, tmp2);
+
+        // Whitening step.
+        tmp2 = _mm_xor_si128(tmp2, keySchedule[0]);
+
+        // Apply the AES rounds.
+        int round = 1;
+        for (; round < rounds; round++) {
+          tmp2 = _mm_aesenc_si128(tmp2, keySchedule[round]);
+        }
+
+        // And the last.
+        tmp2 = _mm_aesenclast_si128(tmp2, keySchedule[round]);
+
+        // Swap byte-order => little-endian.        
+        if (!bigEndian) {        
+          reverse_m128i(tmp2); 
+        }
+        
+        // Save the encrypted block.
+        _mm_storeu_si128(&output[block], tmp2);
+      }
+    }
+    
+    void Cryptor::cbcDecrypt(const string &ciphertext, const Key &key,
+                             string *plaintext,
+                             unsigned char *schedule) {
+      plaintext->resize(ciphertext.size());
+
+      int blocks = ciphertext.size() / 16;
+      if (ciphertext.size() % 16) {
+        blocks++;
+      }
+
+      __m128i tmp, tmp2, tmp3;
+      __m128i *input = (__m128i*) ciphertext.data();
+      __m128i *output = (__m128i*) plaintext->data();      
+      __m128i *keySchedule = (__m128i*) schedule;
+      int rounds = getRounds(key.size);
+
+      // Load the IV.
+      tmp2 = _mm_loadu_si128((__m128i*) key.iv);
+
+      // Swap byte-order => big-endian.
+      if (!bigEndian) {        
+        reverse_m128i(tmp2); 
+      }            
+      
+      for (int block = 0; block < blocks; block++) {
+        // Get next 128-bit block.
+        tmp = _mm_loadu_si128(&input[block]);
+
+        // Swap byte-order => big-endian.
+        if (!bigEndian) {                
+          reverse_m128i(tmp); 
+        }
+
+        // Whitening step.
+        tmp3 = _mm_xor_si128(tmp, keySchedule[0]);
+
+        // Apply the AES rounds.
+        int round = 1;
+        for (; round < rounds; round++) {
+          tmp3 = _mm_aesdec_si128(tmp3, keySchedule[round]);
+        }
+
+        // And the last.
+        tmp3 = _mm_aesdeclast_si128(tmp3, keySchedule[round]);
+
+        // XOR IV or last ciphertext with the ciphertext.
+        tmp3 = _mm_xor_si128(tmp3, tmp2);
+
+        // Swap byte-order => little-endian.
+        if (!bigEndian) {                        
+          reverse_m128i(tmp3);
+        }
+        
+        // Save the decrypted block.
+        _mm_storeu_si128(&output[block], tmp3);
+
+        // Save the last ciphertext.
+        tmp2 = tmp;                
+      }            
     }
   }
 }

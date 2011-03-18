@@ -10,7 +10,7 @@ using namespace FAES::AES;
 int main(int argc, char **argv) {
   Cryptor cryptor(CBC);
 
-  Key key = cryptor.genKey(_128_BITS);
+  Key key = cryptor.genKey(_256_BITS);
   cout << key << endl;
 
   string plaintext = "Hello CBC Mode!!";

@@ -61,7 +61,14 @@ namespace FAES {
                       unsigned char *schedule);
       void ecbDecrypt(const std::string &ciphertext, const Key &key,
                       std::string *plaintext,
-                      unsigned char *schedule);      
+                      unsigned char *schedule);
+
+      void cbcEncrypt(const std::string &plaintext, const Key &key,
+                      std::string *ciphertext,
+                      unsigned char *schedule);
+      void cbcDecrypt(const std::string &ciphertext, const Key &key,
+                      std::string *plaintext,
+                      unsigned char *schedule);            
     
       Mode mode;
       bool bigEndian;
